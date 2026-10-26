@@ -1,0 +1,38 @@
+name: CI Pipeline
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build from source
+        run: make build
+      - name: Test and measure coverage
+        run: make coverage
+      - name: Require at least 80 percent coverage
+        run: |
+          go tool cover -func=coverage.out | awk '/^total:/ { if ($3 + 0 < 80) exit 1 }'
+      - name: Check CLI
+        run: |
+          ./bin/hexlet-path-size --help
+          test "$(./bin/hexlet-path-size testdata/demo/hello.txt)" = "$(printf '6B\ttestdata/demo/hello.txt')"
+          test "$(./bin/hexlet-path-size testdata/demo -r -a)" = "$(printf '27B\ttestdata/demo')"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
